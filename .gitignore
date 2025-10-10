@@ -12,8 +12,10 @@
 *.test
 
 # Code coverage profiles and other test artifacts
+# Output of the go coverage tool
 *.out
 coverage.*
+coverage.txt
 *.coverprofile
 profile.cov
 
@@ -24,9 +26,35 @@ profile.cov
 go.work
 go.work.sum
 
+# Dependency directories
+vendor/
+
+# IDE - GoLand
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Build output
+bin/
+dist/
+build/
+
+# Environment variables
 # env file
 .env
+.env.local
+.env.*.local
 
-# Editor/IDE
-# .idea/
-# .vscode/
+
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Temporary files
+tmp/
+temp/
+.idea
+.vscode
