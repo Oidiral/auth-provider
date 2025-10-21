@@ -15,6 +15,7 @@ type (
 		Jwt      JWTConfig
 		Postgres PostgresConfig
 		Redis    RedisConfig
+		AI       AIConfig
 	}
 
 	HTTPConfig struct {
@@ -62,6 +63,10 @@ type (
 		Port int    `env:"SMTP_PORT, default=587"`
 		From string `env:"SMTP_FROM, default="`
 		Pass string `env:"SMTP_PASS, default="`
+	}
+
+	AIConfig struct {
+		AnthropicAPIKey string `env:"ANTHROPIC_API_KEY, default="`
 	}
 )
 
