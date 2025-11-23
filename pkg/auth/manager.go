@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Oidiral/auth-provider/pkg/logger"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -18,10 +19,13 @@ type Manager struct {
 	signingKey string
 }
 
-func NewManager(signingKey string) (*Manager, error) {
+func NewManager(signingKey string, log logger.Logger) (*Manager, error) {
 	if signingKey == "" {
-		return nil, errors.New("empty signing key")
+		err := errors.New("empty signing key")
+		log.Error("failed to initialize token manager", err)
+		return nil, err
 	}
+	log.Info("token manager initialized successfully")
 	return &Manager{
 		signingKey: signingKey,
 	}, nil

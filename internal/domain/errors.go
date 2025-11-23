@@ -22,10 +22,13 @@ var (
 	ErrTokenSignatureInvalid = errors.New("token signature invalid")
 
 	// OTP errors
-	ErrOTPInvalid             = errors.New("otp invalid")
-	ErrOTPExpired             = errors.New("otp expired")
-	ErrOTPAlreadyUsed         = errors.New("otp already used")
-	ErrOTPMaxAttemptsExceeded = errors.New("otp max attempts exceeded")
+	ErrOTPInvalid            = errors.New("otp invalid")
+	ErrOTPExpired            = errors.New("otp expired")
+	ErrOTPAlreadyUsed        = errors.New("otp already used")
+	ErrOTPAlreadyActive      = errors.New("user already has an active otp")
+	ErrOTPNotFound           = errors.New("otp not found")
+	ErrUserNotActivated      = errors.New("user not activated")
+	ErrOTPInteralServerError = errors.New("otp internal server error")
 
 	// General errors
 	ErrInternalServer = errors.New("internal server error")
