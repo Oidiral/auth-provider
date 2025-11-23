@@ -58,3 +58,4 @@ tmp/
 temp/
 .idea
 .vscode
+*.md

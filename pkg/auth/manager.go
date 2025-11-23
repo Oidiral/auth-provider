@@ -56,7 +56,12 @@ func (m *Manager) Parse(accessToken string) (string, error) {
 	if !ok {
 		return "", errors.New("invalid claims")
 	}
-	return claims["user_id"].(string), nil
+
+	userId, ok := claims["user_id"].(string)
+	if !ok || userId == "" {
+		return "", errors.New("invalid or missing user_id in token")
+	}
+	return userId, nil
 }
 
 func (m *Manager) NewRefreshToken(ttl time.Duration) (string, error) {

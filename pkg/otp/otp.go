@@ -3,7 +3,7 @@ package otp
 import "github.com/xlzd/gotp"
 
 type Generator interface {
-	Generate() string
+	RandomSecret(length int) string
 }
 
 type GOTPGenerator struct{}

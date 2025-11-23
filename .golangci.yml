@@ -1,0 +1,117 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    # === ОБЯЗАТЕЛЬНЫЕ (включены по умолчанию) ===
+    - errcheck      # Проверка необработанных ошибок
+    - govet         # Стандартный анализатор Go
+    - ineffassign   # Неиспользуемые присваивания
+    - staticcheck   # Мощный статический анализ
+    - unused        # Неиспользуемый код
+
+    # === ПРОИЗВОДИТЕЛЬНОСТЬ ===
+    - bodyclose     # Закрытие HTTP response body
+    - prealloc      # Предаллокация слайсов (производительность)
+
+    # === БЕЗОПАСНОСТЬ ===
+    - gosec         # Проблемы безопасности
+
+    # === КАЧЕСТВО КОДА ===
+    - gocyclo       # Сложность функций
+    - nakedret      # "Голые" return в длинных функциях
+    - nilerr        # Возврат nil error
+    - misspell      # Опечатки в комментариях
+    - unconvert     # Ненужные type conversions
+    - gocritic      # Разные проверки качества кода
+    - revive        # Быстрая замена golint
+
+    # === ОШИБКИ И БАГИ ===
+    - errorlint     # Правильная работа с errors.Is/As
+    - sqlclosecheck # Закрытие SQL rows/statements
+    - noctx         # HTTP запросы без context
+
+    # === СТИЛЬ (не строгие) ===
+    - whitespace    # Лишние пробелы
+
+  settings:
+    gocyclo:
+      min-complexity: 20
+
+    govet:
+      enable:
+        - shadow
+      disable:
+        - fieldalignment
+
+    gosec:
+      excludes:
+        - G104  # Дублирует errcheck
+        - G304  # Слишком строго для file paths
+
+    staticcheck:
+      checks:
+        - all
+        - "-ST1000"  # Package comment
+        - "-ST1003"  # Naming conventions
+        - "-ST1016"  # Methods on same type
+        - "-ST1020"  # Comment formatting
+        - "-ST1021"  # Comment formatting
+        - "-ST1022"  # Comment formatting
+
+    gocritic:
+      enabled-checks:
+        # Включаем только те, что не enabled by default
+        - boolExprSimplify
+        - builtinShadow
+        - emptyStringTest
+        - equalFold
+        - httpNoBody
+        - indexAlloc
+        - nilValReturn
+        - rangeValCopy
+        - typeAssertChain
+        - uncheckedInlineErr
+        - unnecessaryDefer
+        - weakCond
+
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+          disabled: true  # Отключаем требование комментариев
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: package-comments
+          disabled: true  # Отключаем требование package comment
+        - name: range
+        - name: receiver-naming
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
