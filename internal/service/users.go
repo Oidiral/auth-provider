@@ -43,11 +43,15 @@ func (u *UserService) SignUp(ctx context.Context, input UserSignUpInput) error {
 		log.Error("failed to hash password", err)
 		return err
 	}
+	var phone *string
+	if input.Phone != "" {
+		phone = &input.Phone
+	}
 	user := domain.User{
 		Username:     input.Username,
 		FirstName:    input.FirstName,
 		LastName:     input.LastName,
-		Phone:        input.Phone,
+		Phone:        phone,
 		Email:        input.Email,
 		PasswordHash: hashPassword,
 	}
@@ -128,6 +132,7 @@ func (u *UserService) Refresh(ctx context.Context, refreshToken string) (Tokens,
 	session, err := u.sessionManager.Get(ctx, refreshToken)
 	if err != nil {
 		log.Warn("invalid or expired refresh token")
+
 		return Tokens{}, err
 	}
 
@@ -178,6 +183,17 @@ func (u *UserService) Verify(ctx context.Context, userId string, otpCode string)
 
 	log.Info("user verified successfully", logger.Field{Key: "user_id", Value: userId})
 	return nil
+}
+
+func (u *UserService) OtpRetrySend(ctx context.Context, userId string) error {
+	log := u.logger.WithContext(ctx)
+	log.Info("OTP retry send attempt", logger.Field{Key: "user_id", Value: userId})
+
+	if userId == "" {
+		log.Warn("empty user id provided for OTP retry send")
+		return domain.ErrInvalidUserID
+	}
+	return u.otpManager.Create(ctx, userId)
 }
 
 func hash(password string) (string, error) {

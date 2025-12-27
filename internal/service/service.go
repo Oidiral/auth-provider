@@ -34,6 +34,7 @@ type Users interface {
 	SignIn(ctx context.Context, input UserSignInInput) (Tokens, error)
 	Refresh(ctx context.Context, refreshToken string) (Tokens, error)
 	Verify(ctx context.Context, userId string, hash string) error
+	OtpRetrySend(ctx context.Context, userId string) error
 }
 
 // Services - контейнер всех сервисов приложения

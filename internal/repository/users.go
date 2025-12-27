@@ -57,7 +57,7 @@ func (r *UserRepo) Create(ctx context.Context, input domain.User) (string, error
 
 func (r *UserRepo) Get(ctx context.Context, id string) (domain.User, error) {
 	var user domain.User
-	err := r.db.GetContext(ctx, &user, "SELECT * FROM users WHERE id = $1", id)
+	err := r.db.GetContext(ctx, &user, "SELECT id, username, first_name, last_name, email, phone, password_hash, is_verified, created_at, updated_at, deleted_at FROM users WHERE id = $1", id)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) {
@@ -77,7 +77,7 @@ func (r *UserRepo) Get(ctx context.Context, id string) (domain.User, error) {
 
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (domain.User, error) {
 	var user domain.User
-	err := r.db.GetContext(ctx, &user, "SELECT * FROM users WHERE email = $1", email)
+	err := r.db.GetContext(ctx, &user, "SELECT id, username, first_name, last_name, email, phone, password_hash, is_verified, created_at, updated_at, deleted_at FROM users WHERE email = $1", email)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) {
