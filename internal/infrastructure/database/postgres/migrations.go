@@ -18,7 +18,6 @@ type MigrationsConfig struct {
 	Timeout time.Duration
 }
 
-// RunMigrations applies all pending migrations to the database
 func RunMigrations(db *sql.DB, log logger.Logger, cfg MigrationsConfig) error {
 	if cfg.Timeout == 0 {
 		cfg.Timeout = 30 * time.Second
@@ -39,22 +38,18 @@ func RunMigrations(db *sql.DB, log logger.Logger, cfg MigrationsConfig) error {
 	return nil
 }
 
-// GooseLogger implements goose.Logger interface
 type GooseLogger struct {
 	log logger.Logger
 }
 
-// NewGooseLogger creates a new GooseLogger
 func NewGooseLogger(log logger.Logger) *GooseLogger {
 	return &GooseLogger{log: log}
 }
 
-// Fatalf implements goose.Logger
 func (gl *GooseLogger) Fatalf(format string, v ...interface{}) {
-	gl.log.Error(fmt.Sprintf(format, v...), nil)
+	gl.log.Fatal(fmt.Sprintf(format, v...))
 }
 
-// Printf implements goose.Logger
 func (gl *GooseLogger) Printf(format string, v ...interface{}) {
 	gl.log.Info(fmt.Sprintf(format, v...))
 }
