@@ -58,4 +58,17 @@ tmp/
 temp/
 .idea
 .vscode
-*.md
+
+# OpenAPI / API Documentation
+# Generated bundled OpenAPI spec (can be rebuilt from source)
+api/openapi/openapi.bundled.yaml
+api/docs/
+node_modules/
+
+# Binary
+main
+
+# Development tools config
+.claude/
+CLAUDE.md
+.tool-versions

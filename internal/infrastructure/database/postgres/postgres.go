@@ -29,6 +29,7 @@ func NewClient(host string, port string, user string, password string, dbname st
 
 	if err := db.PingContext(ctx); err != nil {
 		log.Error("failed to ping postgres", err)
+		db.Close()
 		return nil, err
 	}
 

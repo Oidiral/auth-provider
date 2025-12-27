@@ -34,6 +34,11 @@ func Run() {
 		log.Error("failed to connect to postgres", err)
 		return
 	}
+	defer func() {
+		if err := postgresDB.Close(); err != nil {
+			log.Error("failed to close postgres client", err)
+		}
+	}()
 
 	if err := postgres.RunMigrations(postgres.GetSqlDB(postgresDB), log, postgres.MigrationsConfig{}); err != nil {
 		log.Error("failed to apply migrations", err)
@@ -45,6 +50,11 @@ func Run() {
 		log.Error("failed to connect to redis", err)
 		return
 	}
+	defer func() {
+		if err := redis.Close(); err != nil {
+			log.Error("failed to close redis client", err)
+		}
+	}()
 
 	otpGenerator := otp.NewGOTPGenerator()
 
@@ -64,8 +74,8 @@ func Run() {
 		AccessTokenTTL:  cfg.Auth.JWT.AccessTokenTTL,
 		RefreshTokenTTL: cfg.Auth.JWT.RefreshTokenTTL,
 	})
-	handler := httpdelivery.NewHandler(services, tokentManager)
-	router := handler.Init(cfg, log)
+	handler := httpdelivery.NewHandler(services)
+	router := handler.Init(log)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.HTTP.Port,
@@ -93,14 +103,6 @@ func Run() {
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Error("failed to shut down HTTP server", err)
-	}
-
-	if err := postgresDB.Close(); err != nil {
-		log.Error("failed to close postgres connection", err)
-	}
-
-	if err := redis.Close(); err != nil {
-		log.Error("failed to close redis connection", err)
 	}
 
 	log.Info("application shut down successfully")
