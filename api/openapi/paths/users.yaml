@@ -1,0 +1,257 @@
+sign-up:
+  post:
+    tags:
+      - users
+    summary: Регистрация пользователя
+    description: |
+      Создать новый аккаунт пользователя.
+      После успешной регистрации на указанный email будет отправлен OTP код для верификации.
+    operationId: userSignUp
+    security: []  # Публичный эндпоинт, не требует аутентификации
+    requestBody:
+      required: true
+      description: Данные для регистрации нового пользователя
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/requests.yaml#/UserSignUpRequest'
+          examples:
+            validRequest:
+              summary: Корректный запрос регистрации
+              value:
+                username: john_doe
+                firstName: John
+                lastName: Doe
+                phone: "+77026511120"
+                email: john@example.com
+                password: SecurePass123!
+    responses:
+      '201':
+        description: Пользователь успешно создан
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/SuccessResponse'
+            example:
+              status: 201
+              message: success
+      '400':
+        description: Ошибка валидации входных данных
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/ValidationErrorResponse'
+            example:
+              status: 400
+              message: validation failed
+              errors:
+                - field: email
+                  message: Invalid email address format
+                  tag: email
+                - field: password
+                  message: Password must be at least 8 characters and contain letters, digits, and special characters
+                  tag: strong_password
+      '409':
+        description: Пользователь с таким email или username уже существует
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/ErrorResponse'
+            example:
+              status: 409
+              message: user already exists
+              details: a user with this email or username already exists
+sign-in:
+  post:
+    tags:
+      - users
+    summary: Вход в систему
+    description: |
+      Аутентифицировать пользователя и получить JWT токены.
+      Возвращает пару токенов:
+      - `accessToken` - для аутентификации API запросов (короткий срок жизни)
+      - `refreshToken` - для обновления access токена (длинный срок жизни)
+    operationId: userSignIn
+    security: []  # Публичный эндпоинт, не требует аутентификации
+    requestBody:
+      required: true
+      description: Email и пароль для аутентификации
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/requests.yaml#/UserSignInRequest'
+          examples:
+            validRequest:
+              summary: Корректный запрос входа
+              value:
+                email: john@example.com
+                password: SecurePass123!
+    responses:
+      '200':
+        description: Аутентификация успешна, токены выданы
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/SuccessResponse'
+            example:
+              status: 200
+              message: success
+              data:
+                accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+                refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.cThIIoDvwdueQB468K5xDc5633seEFoqwxjF_xSJyQQ
+      '400':
+        description: Ошибка валидации входных данных
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/ValidationErrorResponse'
+            example:
+              status: 400
+              message: validation failed
+              errors:
+                - field: email
+                  message: Invalid email address format
+                  tag: email
+      '401':
+        description: Неверные учетные данные (email или пароль)
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/ErrorResponse'
+            example:
+              status: 401
+              message: invalid credentials
+              details: email or password is incorrect
+      '409':
+        description: Попытка входа в неактвивный аккаунт
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/ErrorResponse'
+            example:
+              status: 409
+              message: user not activated, please check your email
+verify:
+  post:
+    tags:
+      - users
+    summary: Верификация пользователя
+    description: |
+      Проверить OTP код и активировать аккаунт пользователя.
+      OTP код отправляется на email после регистрации и действителен ограниченное время.
+    operationId: userVerify
+    security: []  # Публичный эндпоинт, не требует аутентификации
+    requestBody:
+      required: true
+      description: ID пользователя и OTP код для верификации
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/requests.yaml#/UserVerifyRequest'
+          examples:
+            validRequest:
+              summary: Корректный запрос верификации
+              value:
+                userId: 550e8400-e29b-41d4-a716-446655440000
+                otp: "123456"
+    responses:
+      '200':
+        description: Пользователь успешно верифицирован
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/SuccessResponse'
+            example:
+              status: 200
+              message: success
+      '400':
+        description: Ошибка валидации входных данных
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/ValidationErrorResponse'
+            example:
+              status: 400
+              message: validation failed
+              errors:
+                - field: userId
+                  message: Invalid UUID format
+                  tag: uuid
+      '404':
+        description: OTP код не найден для данного пользователя
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/ErrorResponse'
+            example:
+              status: 404
+              message: OTP not found
+              details: no OTP code found for this user
+refresh:
+  post:
+    tags:
+      - users
+    summary: Обновление токенов
+    description: |
+      Получить новую пару токенов используя refresh токен.
+
+      Используйте этот эндпоинт когда access токен истёк, но refresh токен ещё действителен.
+    operationId: refreshTokens
+    security: []  # Публичный эндпоинт, не требует аутентификации
+    requestBody:
+      required: true
+      description: Refresh токен для получения новой пары токенов
+      content:
+        application/json:
+          schema:
+            $ref: '../components/schemas/requests.yaml#/TokenRefreshRequest'
+          examples:
+            validRequest:
+              summary: Корректный запрос обновления
+              value:
+                refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.cThIIoDvwdueQB468K5xDc5633seEFoqwxjF_xSJyQQ
+    responses:
+      '200':
+        description: Новая пара токенов успешно выдана
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/SuccessResponse'
+            example:
+              status: 200
+              message: success
+              data:
+                accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+                refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.cThIIoDvwdueQB468K5xDc5633seEFoqwxjF_xSJyQQ
+      '400':
+        description: Ошибка валидации входных данных
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/ValidationErrorResponse'
+            example:
+              status: 400
+              message: validation failed
+              errors:
+                - field: refreshToken
+                  message: refreshToken is required
+                  tag: required
+      '401':
+        description: Неверный или истёкший refresh токен
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/responses.yaml#/ErrorResponse'
+            examples:
+              expiredToken:
+                summary: Истёкший токен
+                value:
+                  status: 401
+                  message: session expired
+                  details: your session has expired, please log in again
+              notFound:
+                summary: Сессия не найдена
+                value:
+                  status: 404
+                  message: session not found
+                  details: no active session found

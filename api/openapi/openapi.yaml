@@ -1,0 +1,68 @@
+openapi: 3.0.3
+info:
+  title: Auth Provider API
+  version: 1.0.0
+  description: |
+    Сервис аутентификации и управления пользователями.
+
+    ## Основной функционал:
+    - Регистрация пользователей
+    - Аутентификация с JWT токенами
+    - Верификация через OTP
+    - Обновление токенов
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+tags:
+  - name: users
+    description: Операции с пользователями и аутентификацией
+
+paths:
+  # Users endpoints
+  /api/v1/users/sign-up:
+    $ref: './paths/users.yaml#/sign-up'
+  /api/v1/users/sign-in:
+    $ref: './paths/users.yaml#/sign-in'
+  /api/v1/users/verify:
+    $ref: './paths/users.yaml#/verify'
+  /api/v1/users/refresh:
+    $ref: './paths/users.yaml#/refresh'
+
+components:
+  schemas:
+    # Request schemas
+    UserSignUpRequest:
+      $ref: './components/schemas/requests.yaml#/UserSignUpRequest'
+    UserSignInRequest:
+      $ref: './components/schemas/requests.yaml#/UserSignInRequest'
+    UserVerifyRequest:
+      $ref: './components/schemas/requests.yaml#/UserVerifyRequest'
+    TokenRefreshRequest:
+      $ref: './components/schemas/requests.yaml#/TokenRefreshRequest'
+
+    # Response schemas
+    SuccessResponse:
+      $ref: './components/schemas/responses.yaml#/SuccessResponse'
+    ErrorResponse:
+      $ref: './components/schemas/responses.yaml#/ErrorResponse'
+    ValidationErrorResponse:
+      $ref: './components/schemas/responses.yaml#/ValidationErrorResponse'
+
+    ValidationMessage:
+      $ref: './components/schemas/common.yaml#/ValidationMessage'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        JWT токен аутентификации. Формат: Bearer {accessToken}.
+        Получить токен можно через эндпоинты: /api/v1/users/sign-in и /api/v1/users/refresh.

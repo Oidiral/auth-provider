@@ -1,0 +1,125 @@
+UserSignUpRequest:
+  type: object
+  required:
+    - username
+    - firstName
+    - lastName
+    - phone
+    - email
+    - password
+  properties:
+    username:
+      type: string
+      minLength: 3
+      maxLength: 20
+      description: Уникальное имя пользователя
+      example: john_doe
+      x-oapi-codegen-extra-tags:
+        validate: required,min=3,max=20
+    firstName:
+      type: string
+      minLength: 2
+      maxLength: 50
+      description: Имя пользователя
+      example: John
+      x-oapi-codegen-extra-tags:
+        validate: required,min=2,max=50
+    lastName:
+      type: string
+      minLength: 2
+      maxLength: 50
+      description: Фамилия пользователя
+      example: Doe
+      x-oapi-codegen-extra-tags:
+        validate: required,min=2,max=50
+    phone:
+      type: string
+      pattern: '^\+?[1-9]\d{10,14}$'
+      description: Номер телефона в формате E.164 (например, +79991234567)
+      example: "+77026511120"
+      x-oapi-codegen-extra-tags:
+        validate: required,phone
+    email:
+      type: string
+      format: email
+      description: Email адрес пользователя
+      example: john@example.com
+      x-oapi-codegen-extra-tags:
+        validate: required,email
+    password:
+      type: string
+      format: password
+      minLength: 8
+      maxLength: 72
+      pattern: '^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$'
+      description: |
+        Пароль должен содержать:
+        - Минимум 8 символов
+        - Минимум одну букву
+        - Минимум одну цифру
+        - Минимум один специальный символ (@$!%*#?&)
+      example: SecurePass123!
+      x-oapi-codegen-extra-tags:
+        validate: required,strong_password
+
+
+
+TokenRefreshRequest:
+  type: object
+  required:
+    - refreshToken
+  properties:
+    refreshToken:
+      type: string
+      minLength: 1
+      description: JWT refresh токен
+      example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+      x-oapi-codegen-extra-tags:
+        validate: required,min=1
+
+UserSignInRequest:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+      description: Email адрес пользователя
+      example: john@example.com
+      x-oapi-codegen-extra-tags:
+        validate: required,email
+    password:
+      type: string
+      format: password
+      minLength: 1
+      description: Пароль пользователя
+      example: SecurePass123!
+      x-oapi-codegen-extra-tags:
+        validate: required,min=1
+
+
+UserVerifyRequest:
+  type: object
+  required:
+    - userId
+    - otp
+  properties:
+    userId:
+      type: string
+      format: uuid
+      description: UUID пользователя
+      example: 123e4567-e89b-12d3-a456-426655440000
+      x-oapi-codegen-extra-tags:
+        validate: required,uuid
+    otp:
+      type: string
+      pattern: '\d{6}$'
+      description: 6 - значный OTP
+      example: "123456"
+      x-oapi-codegen-extra-tags:
+        validate: required,len=6,numeric
+
+
+

@@ -1,0 +1,70 @@
+SuccessResponse:
+  type: object
+  required:
+    - status
+    - message
+  properties:
+    status:
+      type: integer
+      description: HTTP статус код
+      example: 200
+    message:
+      type: string
+      description: Сообщение об успехе
+      example: success
+    data:
+      type: object
+      description: Данные ответа (опционально)
+      additionalProperties: true
+
+ErrorResponse:
+  type: object
+  required:
+    - status
+    - message
+  properties:
+    status:
+      type: integer
+      description: HTTP статус код ошибки
+      example: 400
+    message:
+      type: string
+      description: Краткое описание ошибки
+      example: invalid request
+    details:
+      type: string
+      description: Дополнительная информация об ошибке (опционально)
+      example: additional error context
+
+ValidationErrorResponse:
+  type: object
+  required:
+    - status
+    - message
+    - errors
+  properties:
+    status:
+      type: integer
+      description: HTTP статус код (всегда 400 для ошибок валидации)
+      example: 400
+    message:
+      type: string
+      description: Общее сообщение об ошибке валидации
+      example: validation failed
+    errors:
+      type: array
+      description: Массив ошибок валидации для каждого поля
+      items:
+        $ref: './common.yaml#/ValidationMessage'
+  example:
+    status: 400
+    message: validation failed
+    errors:
+      - field: email
+        message: Invalid email address format
+        tag: email
+        value: invalid-email
+      - field: password
+        message: Password must be at least 8 characters and contain letters, digits, and special characters
+        tag: strong_password
+        value: ""

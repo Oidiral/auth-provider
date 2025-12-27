@@ -1,0 +1,11 @@
+package: apiv1
+generate:
+  models: true
+  chi-server: true
+  embedded-spec: true
+output: internal/generated/api/v1/server.gen.go
+output-options:
+  skip-fmt: false
+  skip-prune: false
+compatibility:
+  always-prefix-enum-values: true

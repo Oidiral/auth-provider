@@ -1,0 +1,22 @@
+ValidationMessage:
+  type: object
+  required:
+    - field
+    - message
+  properties:
+    field:
+      type: string
+      description: Имя поля, которое не прошло валидацию
+      example: email
+    message:
+      type: string
+      description: Человекочитаемое сообщение об ошибке
+      example: Invalid email address format
+    tag:
+      type: string
+      description: Тег валидатора, который не прошёл (опционально)
+      example: email
+    value:
+      type: string
+      description: Значение, которое не прошло валидацию (опционально)
+      example: invalid-email
