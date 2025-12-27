@@ -114,6 +114,11 @@ func (s *Session) DeleteAllByUserId(ctx context.Context, userID string) error {
 	pipe := s.redis.TxPipeline()
 
 	for _, token := range refreshTokens {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 		pipe.Del(ctx, s.sessionKey(token))
 	}
 
@@ -164,6 +169,11 @@ func (s *Session) GetByUserId(ctx context.Context, userID string) ([]domain.Sess
 	sessions := make([]domain.Session, 0, len(refreshTokens))
 
 	for _, token := range refreshTokens {
+		select {
+		case <-ctx.Done():
+			return sessions, ctx.Err()
+		default:
+		}
 		session, err := s.Get(ctx, token)
 		if err != nil {
 			if errors.Is(err, domain.ErrSessionNotFound) || errors.Is(err, domain.ErrSessionExpired) {
