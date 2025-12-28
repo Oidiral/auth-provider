@@ -3,7 +3,7 @@ package domain
 import "time"
 
 type Role struct {
-	ID          string    `db:"id"`
+	ID          int       `db:"id"`
 	Name        string    `db:"name"`
 	Description string    `db:"description"`
 	CreatedAt   time.Time `db:"created_at"`
@@ -12,6 +12,6 @@ type Role struct {
 
 type UserRole struct {
 	UserID    string    `db:"user_id"`
-	RoleID    string    `db:"role_id"`
+	RoleID    int       `db:"role_id"`
 	CreatedAt time.Time `db:"created_at"`
 }
