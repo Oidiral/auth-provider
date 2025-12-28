@@ -2,6 +2,12 @@ package domain
 
 import "time"
 
+const (
+	RoleUser      = "user"
+	RoleAdmin     = "admin"
+	RoleModerator = "moderator"
+)
+
 type Role struct {
 	ID          int       `db:"id"`
 	Name        string    `db:"name"`

@@ -17,7 +17,6 @@ import (
 	"github.com/Oidiral/auth-provider/internal/service"
 	"github.com/Oidiral/auth-provider/pkg/auth"
 	"github.com/Oidiral/auth-provider/pkg/logger"
-	"github.com/Oidiral/auth-provider/pkg/otp"
 )
 
 func Run() {
@@ -56,8 +55,6 @@ func Run() {
 		}
 	}()
 
-	otpGenerator := otp.NewGOTPGenerator()
-
 	tokentManager, err := auth.NewManager(cfg.Auth.JWT.SigningKey, log)
 	if err != nil {
 		log.Error("failed to create token manager", err)
@@ -70,7 +67,6 @@ func Run() {
 		Repos:           repos,
 		Logger:          log,
 		TokenManager:    tokentManager,
-		OtpGenerator:    otpGenerator,
 		AccessTokenTTL:  cfg.Auth.JWT.AccessTokenTTL,
 		RefreshTokenTTL: cfg.Auth.JWT.RefreshTokenTTL,
 	})

@@ -22,7 +22,7 @@ var (
 	ErrOTPAlreadyActive      = errors.New("user already has an active otp")
 	ErrOTPNotFound           = errors.New("otp not found")
 	ErrUserNotActivated      = errors.New("user not activated")
-	ErrOTPInteralServerError = errors.New("otp internal server error")
+	ErrOTPInternalServerError = errors.New("otp internal server error")
 
 	// General errors
 	ErrInternalServer = errors.New("internal server error")

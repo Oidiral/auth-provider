@@ -72,7 +72,7 @@ func (u *UserService) SignUp(ctx context.Context, input UserSignUpInput) error {
 		return err
 	}
 
-	role, err := uow.Roles().GetByName(ctx, "user")
+	role, err := uow.Roles().GetByName(ctx, domain.RoleUser)
 	if err != nil {
 		log.Error("failed to get default role", err)
 		return err

@@ -30,8 +30,8 @@ type Sessions interface {
 
 // OtpCodesRepository определяет интерфейс для работы с OTP кодами
 type OtpCodesRepository interface {
-	// Create создает новый OTP код для пользователя
-	Create(ctx context.Context, userId string) error
+	// Create создает новый OTP код для пользователя и возвращает его
+	Create(ctx context.Context, userId string) (string, error)
 	// Delete удаляет OTP код пользователя
 	Delete(ctx context.Context, userId string) error
 	// Get получает OTP код пользователя
@@ -101,7 +101,7 @@ type Repositories struct {
 func NewRepositories(db *sqlx.DB, redisClient *redis.Client, ExpiresSessionTTL time.Duration, ExpiresOtpTTl time.Duration, log logger.Logger) *Repositories {
 	return &Repositories{
 		Sessions:   NewSession(redisClient, ExpiresSessionTTL, log),
-		OtpCodes:   NewOtpManager(redisClient, log, ExpiresOtpTTl),
+		OtpCodes:   NewOtpRepository(redisClient, log, ExpiresOtpTTl),
 		Users:      NewUserRepo(db, log),
 		Roles:      NewRole(db, log),
 		UoWFactory: NewUoWFactory(db, log),

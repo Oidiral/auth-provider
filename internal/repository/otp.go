@@ -2,15 +2,16 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/Oidiral/auth-provider/internal/domain"
 	"github.com/Oidiral/auth-provider/pkg/logger"
 	"github.com/redis/go-redis/v9"
-	"github.com/xlzd/gotp"
 )
 
 type OtpRepository struct {
@@ -19,7 +20,7 @@ type OtpRepository struct {
 	ExpiresTTL time.Duration
 }
 
-func NewOtpManager(redis *redis.Client, log logger.Logger, expiresTTL time.Duration) *OtpRepository {
+func NewOtpRepository(redis *redis.Client, log logger.Logger, expiresTTL time.Duration) *OtpRepository {
 	return &OtpRepository{
 		redis:      redis,
 		logger:     log,
@@ -27,33 +28,51 @@ func NewOtpManager(redis *redis.Client, log logger.Logger, expiresTTL time.Durat
 	}
 }
 
+func generateNumericCode(length int) (string, error) {
+	max := big.NewInt(1)
+	for i := 0; i < length; i++ {
+		max.Mul(max, big.NewInt(10))
+	}
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%0*d", length, n), nil
+}
+
 func (o *OtpRepository) otpKey(userId string) string {
 	return fmt.Sprintf("otp:%s", userId)
 }
 
-func (o *OtpRepository) Create(ctx context.Context, userId string) error {
+func (o *OtpRepository) Create(ctx context.Context, userId string) (string, error) {
 	log := o.logger.WithContext(ctx)
 	log.Info("creating OTP code", logger.Field{Key: "user_id", Value: userId})
 
+	code, err := generateNumericCode(6)
+	if err != nil {
+		log.Error("failed to generate OTP code", err, logger.Field{Key: "user_id", Value: userId})
+		return "", err
+	}
+
 	otp := domain.OTP{
 		UserId:    userId,
-		Code:      gotp.RandomSecret(4),
+		Code:      code,
 		CreatedAt: time.Now(),
 	}
 	data, err := json.Marshal(otp)
 	if err != nil {
 		log.Error("failed to marshal OTP", err, logger.Field{Key: "user_id", Value: userId})
-		return err
+		return "", err
 	}
 
 	err = o.redis.Set(ctx, o.otpKey(userId), data, o.ExpiresTTL).Err()
 	if err != nil {
 		log.Error("failed to save OTP to redis", err, logger.Field{Key: "user_id", Value: userId})
-		return err
+		return "", err
 	}
 
 	log.Info("OTP code created successfully", logger.Field{Key: "user_id", Value: userId})
-	return nil
+	return code, nil
 }
 
 func (o *OtpRepository) Delete(ctx context.Context, userId string) error {
@@ -71,18 +90,26 @@ func (o *OtpRepository) Delete(ctx context.Context, userId string) error {
 }
 
 func (o *OtpRepository) Get(ctx context.Context, userId string) (domain.OTP, error) {
+	log := o.logger.WithContext(ctx)
+	log.Info("getting OTP code", logger.Field{Key: "user_id", Value: userId})
+
 	var otp domain.OTP
 	data, err := o.redis.Get(ctx, o.otpKey(userId)).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
+			log.Warn("OTP not found", logger.Field{Key: "user_id", Value: userId})
 			return otp, domain.ErrOTPNotFound
 		}
-		return otp, domain.ErrOTPInteralServerError
+		log.Error("failed to get OTP from redis", err, logger.Field{Key: "user_id", Value: userId})
+		return otp, domain.ErrOTPInternalServerError
 	}
 	err = json.Unmarshal(data, &otp)
 	if err != nil {
+		log.Error("failed to unmarshal OTP", err, logger.Field{Key: "user_id", Value: userId})
 		return otp, err
 	}
+
+	log.Info("OTP code retrieved successfully", logger.Field{Key: "user_id", Value: userId})
 	return otp, nil
 }
 

@@ -7,7 +7,6 @@ import (
 	"github.com/Oidiral/auth-provider/internal/repository"
 	"github.com/Oidiral/auth-provider/pkg/auth"
 	"github.com/Oidiral/auth-provider/pkg/logger"
-	"github.com/Oidiral/auth-provider/pkg/otp"
 )
 
 type UserSignUpInput struct {
@@ -54,7 +53,6 @@ type Deps struct {
 
 	// External services
 	TokenManager auth.TokenManager
-	OtpGenerator otp.Generator
 
 	// Infrastructure
 	Logger logger.Logger

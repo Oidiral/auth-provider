@@ -1,6 +1,6 @@
 package domain
 
 type Session struct {
-	UserID       string
-	RefreshToken string
+	UserID       string `json:"userId"`
+	RefreshToken string `json:"refreshToken"`
 }
