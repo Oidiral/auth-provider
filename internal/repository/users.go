@@ -29,8 +29,8 @@ func (r *UserRepo) Create(ctx context.Context, input domain.User) (string, error
 
 	err := r.db.QueryRowContext(
 		ctx,
-		"INSERT INTO users (email, password_hash, first_name, last_name, username) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-		input.Email, input.PasswordHash, input.FirstName, input.LastName, input.Username,
+		"INSERT INTO users (email, password_hash, first_name, last_name, username, phone) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+		input.Email, input.PasswordHash, input.FirstName, input.LastName, input.Username, input.Phone,
 	).Scan(&input.ID)
 	if err != nil {
 		var pqErr *pq.Error
