@@ -14,6 +14,7 @@ import (
 
 type UserService struct {
 	repository      repository.Users
+	uowFactory      repository.UoWFactory
 	tokenManager    auth.TokenManager
 	sessionManager  repository.Sessions
 	otpManager      repository.OtpCodesRepository
@@ -22,9 +23,10 @@ type UserService struct {
 	logger          logger.Logger
 }
 
-func NewUserService(repository repository.Users, tokenManager auth.TokenManager, accessTokenTTL time.Duration, refreshTokenTTL time.Duration, sessionManager repository.Sessions, otpManager repository.OtpCodesRepository, log logger.Logger) *UserService {
+func NewUserService(repository repository.Users, uowFactory repository.UoWFactory, tokenManager auth.TokenManager, accessTokenTTL time.Duration, refreshTokenTTL time.Duration, sessionManager repository.Sessions, otpManager repository.OtpCodesRepository, log logger.Logger) *UserService {
 	return &UserService{
 		repository:      repository,
+		uowFactory:      uowFactory,
 		tokenManager:    tokenManager,
 		accessTokenTTL:  accessTokenTTL,
 		refreshTokenTTL: refreshTokenTTL,
@@ -43,6 +45,14 @@ func (u *UserService) SignUp(ctx context.Context, input UserSignUpInput) error {
 		log.Error("failed to hash password", err)
 		return err
 	}
+
+	uow, err := u.uowFactory.Begin(ctx)
+	if err != nil {
+		log.Error("failed to begin transaction", err)
+		return err
+	}
+	defer func() { _ = uow.Rollback() }()
+
 	var phone *string
 	if input.Phone != "" {
 		phone = &input.Phone
@@ -56,20 +66,35 @@ func (u *UserService) SignUp(ctx context.Context, input UserSignUpInput) error {
 		PasswordHash: hashPassword,
 	}
 
-	userId, err := u.repository.Create(ctx, user)
+	userId, err := uow.Users().Create(ctx, user)
 	if err != nil {
 		log.Error("failed to create user", err, logger.Field{Key: "email", Value: input.Email})
+		return err
+	}
+
+	role, err := uow.Roles().GetByName(ctx, "user")
+	if err != nil {
+		log.Error("failed to get default role", err)
+		return err
+	}
+
+	err = uow.Roles().AssignToUser(ctx, userId, role.ID)
+	if err != nil {
+		log.Error("failed to assign role to user", err, logger.Field{Key: "user_id", Value: userId})
+		return err
+	}
+
+	if err := uow.Commit(); err != nil {
+		log.Error("failed to commit transaction", err)
 		return err
 	}
 
 	err = u.otpManager.Create(ctx, userId)
 	if err != nil {
 		log.Error("failed to create OTP", err, logger.Field{Key: "user_id", Value: userId})
-		if delErr := u.repository.Delete(ctx, userId); delErr != nil {
-			log.Error("failed to rollback user creation", delErr, logger.Field{Key: "user_id", Value: userId})
-		}
 		return err
 	}
+
 	log.Info("user signed up successfully", logger.Field{Key: "email", Value: input.Email}, logger.Field{Key: "user_id", Value: userId})
 	return nil
 }

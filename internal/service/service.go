@@ -69,6 +69,7 @@ type Deps struct {
 func NewServices(deps Deps) *Services {
 	userService := NewUserService(
 		deps.Repos.Users,
+		deps.Repos.UoWFactory,
 		deps.TokenManager,
 		deps.AccessTokenTTL,
 		deps.RefreshTokenTTL,
