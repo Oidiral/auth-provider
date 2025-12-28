@@ -54,18 +54,56 @@ type Users interface {
 	Delete(ctx context.Context, id string) error
 }
 
+// Roles определяет интерфейс для работы с ролями пользователей
+type Roles interface {
+	// GetById получает роль по ID
+	GetById(ctx context.Context, id int) (domain.Role, error)
+	// GetByName получает роль по имени
+	GetByName(ctx context.Context, name string) (domain.Role, error)
+	// GetUserRoles получает все роли пользователя
+	GetUserRoles(ctx context.Context, userId string) ([]domain.Role, error)
+	// AssignToUser назначает роль пользователю
+	AssignToUser(ctx context.Context, userId string, roleId int) error
+	// RemoveFromUser удаляет роль у пользователя
+	RemoveFromUser(ctx context.Context, userId string, roleId int) error
+	// UserHasRole проверяет наличие роли у пользователя
+	UserHasRole(ctx context.Context, userId string, roleId int) (bool, error)
+}
+
+// UnitOfWork определяет интерфейс для атомарных операций в рамках транзакции
+type UnitOfWork interface {
+	// Users возвращает репозиторий пользователей в рамках транзакции
+	Users() Users
+	// Roles возвращает репозиторий ролей в рамках транзакции
+	Roles() Roles
+	// Commit фиксирует транзакцию
+	Commit() error
+	// Rollback откатывает транзакцию
+	Rollback() error
+}
+
+// UoWFactory определяет интерфейс для создания Unit of Work
+type UoWFactory interface {
+	// Begin начинает новую транзакцию и возвращает UnitOfWork
+	Begin(ctx context.Context) (UnitOfWork, error)
+}
+
 // Repositories объединяет все репозитории приложения
 type Repositories struct {
-	Sessions Sessions
-	Users    Users
-	OtpCodes OtpCodesRepository
+	Sessions   Sessions
+	Users      Users
+	Roles      Roles
+	OtpCodes   OtpCodesRepository
+	UoWFactory UoWFactory
 }
 
 // NewRepositories создает новый экземпляр Repositories с инициализированными репозиториями
 func NewRepositories(db *sqlx.DB, redisClient *redis.Client, ExpiresSessionTTL time.Duration, ExpiresOtpTTl time.Duration, log logger.Logger) *Repositories {
 	return &Repositories{
-		Sessions: NewSession(redisClient, ExpiresSessionTTL, log),
-		OtpCodes: NewOtpManager(redisClient, log, ExpiresOtpTTl),
-		Users:    NewUserRepo(db, log),
+		Sessions:   NewSession(redisClient, ExpiresSessionTTL, log),
+		OtpCodes:   NewOtpManager(redisClient, log, ExpiresOtpTTl),
+		Users:      NewUserRepo(db, log),
+		Roles:      NewRole(db, log),
+		UoWFactory: NewUoWFactory(db, log),
 	}
 }

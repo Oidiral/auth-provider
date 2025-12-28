@@ -7,16 +7,15 @@ import (
 
 	"github.com/Oidiral/auth-provider/internal/domain"
 	"github.com/Oidiral/auth-provider/pkg/logger"
-	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 )
 
 type UserRepo struct {
-	db     *sqlx.DB
+	db     DBTX
 	logger logger.Logger
 }
 
-func NewUserRepo(db *sqlx.DB, log logger.Logger) *UserRepo {
+func NewUserRepo(db DBTX, log logger.Logger) *UserRepo {
 	return &UserRepo{
 		db:     db,
 		logger: log,
