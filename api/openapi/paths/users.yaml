@@ -1,3 +1,32 @@
+validate:
+  get:
+    tags:
+      - users
+    summary: "Валидация токена"
+    operationId: validateToken
+    description: |
+      Проверяет валидность предоставленного JWT токена.
+
+      Endpoint для Nginx auth_request.
+      При успешной валидации возвращает информацию о пользователе через заголовки ответа (без тела ответа).
+    security:
+      - BearerAuth: []
+    responses:
+      '200':
+        description: Токен валиден, информация о пользователе в заголовках. Тело ответа пустое.
+        headers:
+          X-User-Id:
+            schema:
+              type: string
+            description: UUID пользователя
+            example: 550e8400-e29b-41d4-a716-446655440000
+          X-User-Roles:
+            schema:
+              type: string
+            description: Роли пользователя (разделенные запятой)
+            example: user,admin
+      '401':
+        description: Токен невалиден, истёк или отсутствует. Тело ответа пустое.
 sign-up:
   post:
     tags:

@@ -25,6 +25,10 @@ tags:
     description: Операции с пользователями и аутентификацией
 
 paths:
+  # Auth endpoints
+  /api/v1/auth/validate:
+    $ref: './paths/users.yaml#/validate'
+
   # Users endpoints
   /api/v1/users/sign-up:
     $ref: './paths/users.yaml#/sign-up'

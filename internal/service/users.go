@@ -89,7 +89,8 @@ func (u *UserService) SignUp(ctx context.Context, input UserSignUpInput) error {
 		return err
 	}
 
-	err = u.otpManager.Create(ctx, userId)
+	// TODO: В будущем реализовать отправку otp пользователю по sms или по email
+	_, err = u.otpManager.Create(ctx, userId)
 	if err != nil {
 		log.Error("failed to create OTP", err, logger.Field{Key: "user_id", Value: userId})
 		return err
@@ -103,7 +104,14 @@ func (u *UserService) SignIn(ctx context.Context, input UserSignInInput) (Tokens
 	log := u.logger.WithContext(ctx)
 	log.Info("user signin attempt", logger.Field{Key: "email", Value: input.Email})
 
-	user, err := u.repository.GetByEmail(ctx, input.Email)
+	uow, err := u.uowFactory.Begin(ctx)
+	if err != nil {
+		log.Error("failed to begin transaction", err)
+		return Tokens{}, err
+	}
+	defer func() { _ = uow.Rollback() }()
+
+	user, err := uow.Users().GetByEmail(ctx, input.Email)
 	if err != nil {
 		log.Warn("user not found", logger.Field{Key: "email", Value: input.Email})
 		return Tokens{}, err
@@ -114,13 +122,19 @@ func (u *UserService) SignIn(ctx context.Context, input UserSignInInput) (Tokens
 		return Tokens{}, domain.ErrUserNotActivated
 	}
 
+	roles, err := uow.Roles().GetUserRoles(ctx, user.ID)
+	if err != nil {
+		log.Error("failed to get user roles", err, logger.Field{Key: "user_id", Value: user.ID})
+		return Tokens{}, err
+	}
+
 	err = compare(input.Password, user.PasswordHash)
 	if err != nil {
 		log.Warn("invalid credentials for user", logger.Field{Key: "email", Value: input.Email})
 		return Tokens{}, domain.ErrUserInvalidCredentials
 	}
 
-	access, err := u.tokenManager.NewJWT(user.ID, u.accessTokenTTL)
+	access, err := u.tokenManager.NewJWT(user.ID, u.accessTokenTTL, roles)
 	if err != nil {
 		log.Error("failed to generate access token", err, logger.Field{Key: "user_id", Value: user.ID})
 		return Tokens{}, err
@@ -161,7 +175,16 @@ func (u *UserService) Refresh(ctx context.Context, refreshToken string) (Tokens,
 		return Tokens{}, err
 	}
 
-	access, err := u.tokenManager.NewJWT(session.UserID, u.accessTokenTTL)
+	uow, err := u.uowFactory.Begin(ctx)
+	if err != nil {
+		log.Error("failed to begin transaction", err)
+		return Tokens{}, err
+	}
+	defer func() { _ = uow.Rollback() }()
+
+	roles, err := uow.Roles().GetUserRoles(ctx, session.UserID)
+
+	access, err := u.tokenManager.NewJWT(session.UserID, u.accessTokenTTL, roles)
 	if err != nil {
 		log.Error("failed to generate new access token", err, logger.Field{Key: "user_id", Value: session.UserID})
 		return Tokens{}, err
@@ -218,7 +241,18 @@ func (u *UserService) OtpRetrySend(ctx context.Context, userId string) error {
 		log.Warn("empty user id provided for OTP retry send")
 		return domain.ErrInvalidUserID
 	}
-	return u.otpManager.Create(ctx, userId)
+	// TODO: В будущем реализовать отправку otp пользователю по sms или по email
+	_, err := u.otpManager.Create(ctx, userId)
+	return err
+}
+
+func (u *UserService) ValidateToken(ctx context.Context, token string) (userId string, role []string, err error) {
+	userId, role, err = u.tokenManager.Parse(token)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return userId, role, nil
 }
 
 func hash(password string) (string, error) {

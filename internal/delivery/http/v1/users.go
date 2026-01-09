@@ -2,7 +2,9 @@ package v1
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
 	apiv1 "github.com/Oidiral/auth-provider/internal/generated/api/v1"
 	"github.com/Oidiral/auth-provider/internal/service"
@@ -89,6 +91,24 @@ func (h *Handler) UserSignIn(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) ValidateToken(w http.ResponseWriter, r *http.Request) {
+	token, err := extractBearerToken(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	userId, roles, err := h.userService.ValidateToken(r.Context(), token)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("X-User-Id", userId)
+	w.Header().Set("X-User-Roles", strings.Join(roles, ","))
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *Handler) UserVerify(w http.ResponseWriter, r *http.Request) {
 	var req apiv1.UserVerifyJSONRequestBody
 
@@ -141,4 +161,13 @@ func (h *Handler) RefreshTokens(w http.ResponseWriter, r *http.Request) {
 			"RefreshToken": res.RefreshToken,
 		},
 	})
+}
+
+func extractBearerToken(r *http.Request) (string, error) {
+	authHeader := r.Header.Get("Authorization")
+	const bearerPrefix = "Bearer "
+	if !strings.HasPrefix(authHeader, bearerPrefix) {
+		return "", fmt.Errorf("invalid authorization header format")
+	}
+	return strings.TrimPrefix(authHeader, bearerPrefix), nil
 }

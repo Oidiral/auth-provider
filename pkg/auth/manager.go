@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Oidiral/auth-provider/internal/domain"
 	"github.com/Oidiral/auth-provider/pkg/logger"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type TokenManager interface {
-	NewJWT(userId string, ttl time.Duration) (string, error)
-	Parse(accessToken string) (string, error)
+	NewJWT(userId string, ttl time.Duration, roles []domain.Role) (string, error)
+	Parse(accessToken string) (userId string, roles []string, err error)
 	NewRefreshToken(ttl time.Duration) (string, error)
 }
 
@@ -31,9 +32,10 @@ func NewManager(signingKey string, log logger.Logger) (*Manager, error) {
 	}, nil
 }
 
-func (m *Manager) NewJWT(userId string, ttl time.Duration) (string, error) {
+func (m *Manager) NewJWT(userId string, ttl time.Duration, roles []domain.Role) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": userId,
+		"roles":   roles,
 		"exp":     time.Now().Add(ttl).Unix(),
 		"type":    "access",
 	})
@@ -41,7 +43,7 @@ func (m *Manager) NewJWT(userId string, ttl time.Duration) (string, error) {
 	return token.SignedString([]byte(m.signingKey))
 }
 
-func (m *Manager) Parse(accessToken string) (string, error) {
+func (m *Manager) Parse(accessToken string) (userId string, roles []string, err error) {
 	token, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -49,19 +51,24 @@ func (m *Manager) Parse(accessToken string) (string, error) {
 		return []byte(m.signingKey), nil
 	})
 	if err != nil {
-		return "", err
+		return "", []string{}, err
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", errors.New("invalid claims")
+		return "", []string{}, errors.New("invalid claims")
 	}
 
-	userId, ok := claims["user_id"].(string)
-	if !ok || userId == "" {
-		return "", errors.New("invalid or missing user_id in token")
+	userId, ok = claims["user_id"].(string)
+	if !ok {
+		return "", []string{}, errors.New("invalid user_id in token")
 	}
-	return userId, nil
+	roles, ok = claims["roles"].([]string)
+	if !ok {
+		return "", []string{}, errors.New("invalid roles in token")
+	}
+
+	return userId, roles, nil
 }
 
 func (m *Manager) NewRefreshToken(ttl time.Duration) (string, error) {

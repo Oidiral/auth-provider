@@ -23,7 +23,6 @@ func NewClient(host string, port string, user string, password string, dbname st
 
 	db, err := sqlx.ConnectContext(ctx, "postgres", dsn)
 	if err != nil {
-		log.Error("failed to connect to postgres", err)
 		return nil, err
 	}
 
