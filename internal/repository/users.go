@@ -24,7 +24,6 @@ func NewUserRepo(db DBTX, log logger.Logger) *UserRepo {
 
 func (r *UserRepo) Create(ctx context.Context, input domain.User) (string, error) {
 	log := r.logger.WithContext(ctx)
-	log.Info("creating user", logger.Field{Key: "email", Value: input.Email})
 
 	err := r.db.QueryRowContext(
 		ctx,
@@ -36,10 +35,8 @@ func (r *UserRepo) Create(ctx context.Context, input domain.User) (string, error
 		if errors.As(err, &pqErr) {
 			switch pqErr.Code {
 			case "23505":
-				log.Warn("user already exists", logger.Field{Key: "email", Value: input.Email})
 				return "", domain.ErrUserAlreadyExists
 			case "23502":
-				log.Warn("invalid input for user creation", logger.Field{Key: "email", Value: input.Email})
 				return "", domain.ErrInvalidInput
 			default:
 				log.Error("database error creating user", err, logger.Field{Key: "email", Value: input.Email}, logger.Field{Key: "code", Value: pqErr.Code})
@@ -50,7 +47,6 @@ func (r *UserRepo) Create(ctx context.Context, input domain.User) (string, error
 		return "", fmt.Errorf("%w: %v", domain.ErrInternalServer, err)
 	}
 
-	log.Info("user created successfully", logger.Field{Key: "email", Value: input.Email}, logger.Field{Key: "user_id", Value: input.ID})
 	return input.ID, nil
 }
 
@@ -96,7 +92,6 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (domain.User, e
 
 func (r *UserRepo) Update(ctx context.Context, id string, input domain.UpdateUserInput) error {
 	log := r.logger.WithContext(ctx)
-	log.Info("updating user", logger.Field{Key: "user_id", Value: id})
 
 	query := "UPDATE users SET updated_at = NOW()"
 	var args []interface{}
@@ -147,10 +142,8 @@ func (r *UserRepo) Update(ctx context.Context, id string, input domain.UpdateUse
 		if errors.As(err, &pqErr) {
 			switch pqErr.Code {
 			case "23505":
-				log.Warn("duplicate user data on update", logger.Field{Key: "user_id", Value: id})
 				return domain.ErrUserAlreadyExists
 			case "23502":
-				log.Warn("invalid input for user update", logger.Field{Key: "user_id", Value: id})
 				return domain.ErrInvalidInput
 			default:
 				log.Error("database error updating user", err, logger.Field{Key: "user_id", Value: id}, logger.Field{Key: "code", Value: pqErr.Code})
@@ -167,20 +160,16 @@ func (r *UserRepo) Update(ctx context.Context, id string, input domain.UpdateUse
 		return fmt.Errorf("%w: %v", domain.ErrInternalServer, err)
 	}
 	if rowsAffected == 0 {
-		log.Warn("user not found for update", logger.Field{Key: "user_id", Value: id})
 		return domain.ErrUserNotFound
 	}
 
-	log.Info("user updated successfully", logger.Field{Key: "user_id", Value: id})
 	return nil
 }
 
 func (r *UserRepo) Delete(ctx context.Context, id string) error {
 	log := r.logger.WithContext(ctx)
-	log.Info("deleting user", logger.Field{Key: "user_id", Value: id})
 
 	if id == "" {
-		log.Warn("empty user id provided for deletion")
 		return domain.ErrInvalidUserID
 	}
 
@@ -190,13 +179,10 @@ func (r *UserRepo) Delete(ctx context.Context, id string) error {
 		if errors.As(err, &pqErr) {
 			switch pqErr.Code {
 			case "23503":
-				log.Warn("user has dependencies, cannot delete", logger.Field{Key: "user_id", Value: id})
 				return domain.ErrUserHasDependencies
 			case "23502":
-				log.Warn("invalid input for user deletion", logger.Field{Key: "user_id", Value: id})
 				return domain.ErrInvalidInput
 			case "22P02":
-				log.Warn("invalid user id format", logger.Field{Key: "user_id", Value: id})
 				return domain.ErrInvalidUserID
 			default:
 				log.Error("database error deleting user", err, logger.Field{Key: "user_id", Value: id}, logger.Field{Key: "code", Value: pqErr.Code})
@@ -213,10 +199,8 @@ func (r *UserRepo) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("%w: failed to get rows affected", domain.ErrInternalServer)
 	}
 	if rowsAffected == 0 {
-		log.Warn("user not found for deletion", logger.Field{Key: "user_id", Value: id})
 		return domain.ErrUserNotFound
 	}
 
-	log.Info("user deleted successfully", logger.Field{Key: "user_id", Value: id})
 	return nil
 }

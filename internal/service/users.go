@@ -38,7 +38,6 @@ func NewUserService(repository repository.Users, uowFactory repository.UoWFactor
 
 func (u *UserService) SignUp(ctx context.Context, input UserSignUpInput) error {
 	log := u.logger.WithContext(ctx)
-	log.Info("user signup attempt", logger.Field{Key: "email", Value: input.Email})
 
 	hashPassword, err := hash(input.Password)
 	if err != nil {
@@ -68,7 +67,6 @@ func (u *UserService) SignUp(ctx context.Context, input UserSignUpInput) error {
 
 	userId, err := uow.Users().Create(ctx, user)
 	if err != nil {
-		log.Error("failed to create user", err, logger.Field{Key: "email", Value: input.Email})
 		return err
 	}
 
@@ -92,17 +90,14 @@ func (u *UserService) SignUp(ctx context.Context, input UserSignUpInput) error {
 	// TODO: В будущем реализовать отправку otp пользователю по sms или по email
 	_, err = u.otpManager.Create(ctx, userId)
 	if err != nil {
-		log.Error("failed to create OTP", err, logger.Field{Key: "user_id", Value: userId})
 		return err
 	}
 
-	log.Info("user signed up successfully", logger.Field{Key: "email", Value: input.Email}, logger.Field{Key: "user_id", Value: userId})
 	return nil
 }
 
 func (u *UserService) SignIn(ctx context.Context, input UserSignInInput) (Tokens, error) {
 	log := u.logger.WithContext(ctx)
-	log.Info("user signin attempt", logger.Field{Key: "email", Value: input.Email})
 
 	uow, err := u.uowFactory.Begin(ctx)
 	if err != nil {
@@ -113,12 +108,11 @@ func (u *UserService) SignIn(ctx context.Context, input UserSignInInput) (Tokens
 
 	user, err := uow.Users().GetByEmail(ctx, input.Email)
 	if err != nil {
-		log.Warn("user not found", logger.Field{Key: "email", Value: input.Email})
 		return Tokens{}, err
 	}
 
 	if !user.IsVerified {
-		log.Warn("unverified user signin attempt", logger.Field{Key: "email", Value: input.Email}, logger.Field{Key: "user_id", Value: user.ID})
+		log.Warn("unverified user signin attempt", logger.Field{Key: "user_id", Value: user.ID})
 		return Tokens{}, domain.ErrUserNotActivated
 	}
 
@@ -130,7 +124,7 @@ func (u *UserService) SignIn(ctx context.Context, input UserSignInInput) (Tokens
 
 	err = compare(input.Password, user.PasswordHash)
 	if err != nil {
-		log.Warn("invalid credentials for user", logger.Field{Key: "email", Value: input.Email})
+		log.Warn("invalid credentials", logger.Field{Key: "user_id", Value: user.ID})
 		return Tokens{}, domain.ErrUserInvalidCredentials
 	}
 
@@ -148,11 +142,9 @@ func (u *UserService) SignIn(ctx context.Context, input UserSignInInput) (Tokens
 
 	err = u.sessionManager.Create(ctx, refresh, user.ID)
 	if err != nil {
-		log.Error("failed to create session", err, logger.Field{Key: "user_id", Value: user.ID})
 		return Tokens{}, err
 	}
 
-	log.Info("user signed in successfully", logger.Field{Key: "email", Value: input.Email}, logger.Field{Key: "user_id", Value: user.ID})
 	return Tokens{
 		AccessToken:  access,
 		RefreshToken: refresh,
@@ -161,17 +153,13 @@ func (u *UserService) SignIn(ctx context.Context, input UserSignInInput) (Tokens
 
 func (u *UserService) Refresh(ctx context.Context, refreshToken string) (Tokens, error) {
 	log := u.logger.WithContext(ctx)
-	log.Info("token refresh attempt")
 
 	if refreshToken == "" {
-		log.Warn("empty refresh token provided")
 		return Tokens{}, domain.ErrTokenInvalid
 	}
 
 	session, err := u.sessionManager.Get(ctx, refreshToken)
 	if err != nil {
-		log.Warn("invalid or expired refresh token")
-
 		return Tokens{}, err
 	}
 
@@ -198,11 +186,9 @@ func (u *UserService) Refresh(ctx context.Context, refreshToken string) (Tokens,
 
 	err = u.sessionManager.Replace(ctx, refreshToken, newRefreshToken, session.UserID)
 	if err != nil {
-		log.Error("failed to replace session", err, logger.Field{Key: "user_id", Value: session.UserID})
 		return Tokens{}, err
 	}
 
-	log.Info("token refreshed successfully", logger.Field{Key: "user_id", Value: session.UserID})
 	return Tokens{
 		AccessToken:  access,
 		RefreshToken: newRefreshToken,
@@ -210,35 +196,24 @@ func (u *UserService) Refresh(ctx context.Context, refreshToken string) (Tokens,
 }
 
 func (u *UserService) Verify(ctx context.Context, userId string, otpCode string) error {
-	log := u.logger.WithContext(ctx)
-	log.Info("user verification attempt", logger.Field{Key: "user_id", Value: userId})
-
 	user, err := u.repository.Get(ctx, userId)
 	if err != nil {
-		log.Error("failed to get user for verification", err, logger.Field{Key: "user_id", Value: userId})
 		return err
 	}
 	if user.IsVerified {
-		log.Warn("user already verified", logger.Field{Key: "user_id", Value: userId})
 		return domain.ErrOTPAlreadyActive
 	}
 
 	err = u.otpManager.Verify(ctx, userId, otpCode)
 	if err != nil {
-		log.Warn("OTP verification failed", logger.Field{Key: "user_id", Value: userId})
 		return err
 	}
 
-	log.Info("user verified successfully", logger.Field{Key: "user_id", Value: userId})
 	return nil
 }
 
 func (u *UserService) OtpRetrySend(ctx context.Context, userId string) error {
-	log := u.logger.WithContext(ctx)
-	log.Info("OTP retry send attempt", logger.Field{Key: "user_id", Value: userId})
-
 	if userId == "" {
-		log.Warn("empty user id provided for OTP retry send")
 		return domain.ErrInvalidUserID
 	}
 	// TODO: В будущем реализовать отправку otp пользователю по sms или по email

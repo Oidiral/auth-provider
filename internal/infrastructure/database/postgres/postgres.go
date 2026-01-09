@@ -14,8 +14,6 @@ import (
 const timeout = 10 * time.Second
 
 func NewClient(host string, port string, user string, password string, dbname string, log logger.Logger) (*sqlx.DB, error) {
-	log.Info("connecting to postgres", logger.Field{Key: "host", Value: host}, logger.Field{Key: "port", Value: port}, logger.Field{Key: "database", Value: dbname})
-
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -27,7 +25,6 @@ func NewClient(host string, port string, user string, password string, dbname st
 	}
 
 	if err := db.PingContext(ctx); err != nil {
-		log.Error("failed to ping postgres", err)
 		db.Close()
 		return nil, err
 	}
@@ -36,7 +33,6 @@ func NewClient(host string, port string, user string, password string, dbname st
 	db.SetMaxIdleConns(10)
 	db.SetConnMaxLifetime(time.Minute * 3)
 
-	log.Info("successfully connected to postgres")
 	return db, nil
 }
 

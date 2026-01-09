@@ -39,7 +39,6 @@ func (s *Session) userSessionsKey(userID string) string {
 
 func (s *Session) Create(ctx context.Context, refreshToken string, userID string) error {
 	log := s.logger.WithContext(ctx)
-	log.Info("creating session", logger.Field{Key: "user_id", Value: userID})
 
 	session := domain.Session{
 		UserID:       userID,
@@ -66,13 +65,11 @@ func (s *Session) Create(ctx context.Context, refreshToken string, userID string
 		return fmt.Errorf("failed to create session: %w", err)
 	}
 
-	log.Info("session created successfully", logger.Field{Key: "user_id", Value: userID})
 	return nil
 }
 
 func (s *Session) Delete(ctx context.Context, refreshToken string) error {
 	log := s.logger.WithContext(ctx)
-	log.Info("deleting session")
 
 	session, err := s.Get(ctx, refreshToken)
 	if err != nil {
@@ -92,13 +89,11 @@ func (s *Session) Delete(ctx context.Context, refreshToken string) error {
 		return fmt.Errorf("failed to delete session: %w", err)
 	}
 
-	log.Info("session deleted successfully", logger.Field{Key: "user_id", Value: session.UserID})
 	return nil
 }
 
 func (s *Session) DeleteAllByUserId(ctx context.Context, userID string) error {
 	log := s.logger.WithContext(ctx)
-	log.Info("deleting all sessions", logger.Field{Key: "user_id", Value: userID})
 
 	refreshTokens, err := s.redis.SMembers(ctx, s.userSessionsKey(userID)).Result()
 	if err != nil {
@@ -107,7 +102,6 @@ func (s *Session) DeleteAllByUserId(ctx context.Context, userID string) error {
 	}
 
 	if len(refreshTokens) == 0 {
-		log.Warn("no sessions found", logger.Field{Key: "user_id", Value: userID})
 		return domain.ErrSessionNotFound
 	}
 
@@ -130,7 +124,6 @@ func (s *Session) DeleteAllByUserId(ctx context.Context, userID string) error {
 		return fmt.Errorf("failed to delete user sessions: %w", err)
 	}
 
-	log.Info("all sessions deleted successfully", logger.Field{Key: "user_id", Value: userID}, logger.Field{Key: "count", Value: len(refreshTokens)})
 	return nil
 }
 
@@ -189,7 +182,6 @@ func (s *Session) GetByUserId(ctx context.Context, userID string) ([]domain.Sess
 
 func (s *Session) Replace(ctx context.Context, oldToken, newToken, userID string) error {
 	log := s.logger.WithContext(ctx)
-	log.Info("replacing session", logger.Field{Key: "user_id", Value: userID})
 
 	script := redis.NewScript(`
 		if redis.call('EXISTS', KEYS[1]) == 0 then
@@ -238,13 +230,11 @@ func (s *Session) Replace(ctx context.Context, oldToken, newToken, userID string
 
 	if err != nil {
 		if err.Error() == "session not found" {
-			log.Warn("session not found for replacement", logger.Field{Key: "user_id", Value: userID})
 			return domain.ErrSessionNotFound
 		}
 		log.Error("failed to replace session", err, logger.Field{Key: "user_id", Value: userID})
 		return fmt.Errorf("failed to replace session: %w", err)
 	}
 
-	log.Info("session replaced successfully", logger.Field{Key: "user_id", Value: userID})
 	return nil
 }

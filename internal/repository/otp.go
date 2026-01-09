@@ -46,7 +46,6 @@ func (o *OtpRepository) otpKey(userId string) string {
 
 func (o *OtpRepository) Create(ctx context.Context, userId string) (string, error) {
 	log := o.logger.WithContext(ctx)
-	log.Info("creating OTP code", logger.Field{Key: "user_id", Value: userId})
 
 	code, err := generateNumericCode(6)
 	if err != nil {
@@ -71,13 +70,11 @@ func (o *OtpRepository) Create(ctx context.Context, userId string) (string, erro
 		return "", err
 	}
 
-	log.Info("OTP code created successfully", logger.Field{Key: "user_id", Value: userId})
 	return code, nil
 }
 
 func (o *OtpRepository) Delete(ctx context.Context, userId string) error {
 	log := o.logger.WithContext(ctx)
-	log.Info("deleting OTP code", logger.Field{Key: "user_id", Value: userId})
 
 	err := o.redis.Del(ctx, o.otpKey(userId)).Err()
 	if err != nil {
@@ -85,19 +82,16 @@ func (o *OtpRepository) Delete(ctx context.Context, userId string) error {
 		return err
 	}
 
-	log.Info("OTP code deleted successfully", logger.Field{Key: "user_id", Value: userId})
 	return nil
 }
 
 func (o *OtpRepository) Get(ctx context.Context, userId string) (domain.OTP, error) {
 	log := o.logger.WithContext(ctx)
-	log.Info("getting OTP code", logger.Field{Key: "user_id", Value: userId})
 
 	var otp domain.OTP
 	data, err := o.redis.Get(ctx, o.otpKey(userId)).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			log.Warn("OTP not found", logger.Field{Key: "user_id", Value: userId})
 			return otp, domain.ErrOTPNotFound
 		}
 		log.Error("failed to get OTP from redis", err, logger.Field{Key: "user_id", Value: userId})
@@ -109,13 +103,11 @@ func (o *OtpRepository) Get(ctx context.Context, userId string) (domain.OTP, err
 		return otp, err
 	}
 
-	log.Info("OTP code retrieved successfully", logger.Field{Key: "user_id", Value: userId})
 	return otp, nil
 }
 
 func (o *OtpRepository) Verify(ctx context.Context, userId, code string) error {
 	log := o.logger.WithContext(ctx)
-	log.Info("verifying OTP code", logger.Field{Key: "user_id", Value: userId})
 
 	script := redis.NewScript(`
 		local otpData = redis.call('GET', KEYS[1])
@@ -141,7 +133,6 @@ func (o *OtpRepository) Verify(ctx context.Context, userId, code string) error {
 
 	if err != nil {
 		if err.Error() == "otp not found" {
-			log.Warn("OTP not found", logger.Field{Key: "user_id", Value: userId})
 			return domain.ErrOTPNotFound
 		}
 		if err.Error() == "otp invalid" {
@@ -152,6 +143,5 @@ func (o *OtpRepository) Verify(ctx context.Context, userId, code string) error {
 		return fmt.Errorf("failed to verify otp: %w", err)
 	}
 
-	log.Info("OTP verified successfully", logger.Field{Key: "user_id", Value: userId})
 	return nil
 }

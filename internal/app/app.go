@@ -86,8 +86,6 @@ func Run() {
 		}
 	}()
 
-	log.Info("application initialized successfully")
-
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
