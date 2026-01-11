@@ -51,24 +51,42 @@ func (m *Manager) Parse(accessToken string) (userId string, roles []string, err 
 		return []byte(m.signingKey), nil
 	})
 	if err != nil {
-		return "", []string{}, err
+		return
+	}
+
+	if !token.Valid {
+		err = errors.New("token is invalid")
+		return
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", []string{}, errors.New("invalid claims")
+		err = errors.New("invalid claims")
+		return
 	}
 
 	userId, ok = claims["user_id"].(string)
 	if !ok {
-		return "", []string{}, errors.New("invalid user_id in token")
+		err = errors.New("invalid user_id in token")
+		return
 	}
-	roles, ok = claims["roles"].([]string)
+	rolesInterface, ok := claims["roles"].([]interface{})
 	if !ok {
-		return "", []string{}, errors.New("invalid roles in token")
+		err = errors.New("invalid roles in token")
+		return
 	}
 
-	return userId, roles, nil
+	roles = make([]string, len(rolesInterface))
+	for i, role := range rolesInterface {
+		roleStr, ok := role.(string)
+		if !ok {
+			err = errors.New("invalid role type in token")
+			return
+		}
+		roles[i] = roleStr
+	}
+
+	return
 }
 
 func (m *Manager) NewRefreshToken(ttl time.Duration) (string, error) {
