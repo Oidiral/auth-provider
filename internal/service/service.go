@@ -7,6 +7,7 @@ import (
 	"github.com/Oidiral/auth-provider/internal/repository"
 	"github.com/Oidiral/auth-provider/pkg/auth"
 	"github.com/Oidiral/auth-provider/pkg/logger"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type UserSignUpInput struct {
@@ -57,6 +58,7 @@ type Deps struct {
 
 	// Infrastructure
 	Logger logger.Logger
+	Tracer trace.Tracer
 
 	// Configuration
 	AccessTokenTTL  time.Duration
@@ -75,6 +77,7 @@ func NewServices(deps Deps) *Services {
 		deps.Repos.Sessions,
 		deps.Repos.OtpCodes,
 		deps.Logger,
+		deps.Tracer,
 	)
 
 	return &Services{

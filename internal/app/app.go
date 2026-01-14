@@ -13,10 +13,12 @@ import (
 	httpdelivery "github.com/Oidiral/auth-provider/internal/delivery/http"
 	"github.com/Oidiral/auth-provider/internal/infrastructure/cache"
 	"github.com/Oidiral/auth-provider/internal/infrastructure/database/postgres"
+	"github.com/Oidiral/auth-provider/internal/infrastructure/tracing"
 	"github.com/Oidiral/auth-provider/internal/repository"
 	"github.com/Oidiral/auth-provider/internal/service"
 	"github.com/Oidiral/auth-provider/pkg/auth"
 	"github.com/Oidiral/auth-provider/pkg/logger"
+	"go.opentelemetry.io/otel"
 )
 
 func Run() {
@@ -55,6 +57,17 @@ func Run() {
 		}
 	}()
 
+	shutdownTracer, err := tracing.Init(context.Background(), cfg.AppName, cfg.Tracing.Endpoint)
+	if err != nil {
+		log.Error("failed to initialize tracing", err)
+		return
+	}
+	defer func() {
+		if err := shutdownTracer(context.Background()); err != nil {
+			log.Error("failed to shut down tracer", err)
+		}
+	}()
+
 	tokentManager, err := auth.NewManager(cfg.Auth.JWT.SigningKey, log)
 	if err != nil {
 		log.Error("failed to create token manager", err)
@@ -66,11 +79,12 @@ func Run() {
 	services := service.NewServices(service.Deps{
 		Repos:           repos,
 		Logger:          log,
+		Tracer:          otel.Tracer("user-service"),
 		TokenManager:    tokentManager,
 		AccessTokenTTL:  cfg.Auth.JWT.AccessTokenTTL,
 		RefreshTokenTTL: cfg.Auth.JWT.RefreshTokenTTL,
 	})
-	handler := httpdelivery.NewHandler(services)
+	handler := httpdelivery.NewHandler(services, cfg.AppName)
 	router := handler.Init(log)
 
 	srv := &http.Server{

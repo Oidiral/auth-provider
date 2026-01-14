@@ -16,6 +16,8 @@ const (
 type (
 	Config struct {
 		Environment string
+		Tracing     TracingConfig
+		AppName     string `env:"APP_NAME" envDefault:"auth-provider"`
 		HTTP        HTTPConfig
 		Auth        AuthConfig
 		Limiter     LimiterConfig
@@ -71,6 +73,10 @@ type (
 		Port int    `env:"SMTP_PORT" envDefault:"587"`
 		From string `env:"SMTP_FROM" envDefault:""`
 		Pass string `env:"SMTP_PASS" envDefault:""`
+	}
+
+	TracingConfig struct {
+		Endpoint string `env:"TRACING_ENDPOINT" envDefault:"localhost:4317"`
 	}
 )
 

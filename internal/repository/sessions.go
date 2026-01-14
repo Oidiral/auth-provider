@@ -10,6 +10,9 @@ import (
 	"github.com/Oidiral/auth-provider/internal/domain"
 	"github.com/Oidiral/auth-provider/pkg/logger"
 	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type Session struct {
@@ -38,6 +41,13 @@ func (s *Session) userSessionsKey(userID string) string {
 }
 
 func (s *Session) Create(ctx context.Context, refreshToken string, userID string) error {
+	ctx, span := otel.Tracer("session-repo").Start(ctx, "Session.Create")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("db.system", "redis"),
+		attribute.String("user.id", userID),
+	)
 	log := s.logger.WithContext(ctx)
 
 	session := domain.Session{
@@ -47,6 +57,8 @@ func (s *Session) Create(ctx context.Context, refreshToken string, userID string
 
 	sessionData, err := json.Marshal(session)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to marshal session")
 		log.Error("failed to marshal session", err, logger.Field{Key: "user_id", Value: userID})
 		return fmt.Errorf("failed to marshal session: %w", err)
 	}
@@ -61,6 +73,8 @@ func (s *Session) Create(ctx context.Context, refreshToken string, userID string
 
 	_, err = pipe.Exec(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to create session")
 		log.Error("failed to create session in redis", err, logger.Field{Key: "user_id", Value: userID})
 		return fmt.Errorf("failed to create session: %w", err)
 	}
@@ -69,13 +83,20 @@ func (s *Session) Create(ctx context.Context, refreshToken string, userID string
 }
 
 func (s *Session) Delete(ctx context.Context, refreshToken string) error {
+	ctx, span := otel.Tracer("session-repo").Start(ctx, "Session.Delete")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("db.system", "redis"))
 	log := s.logger.WithContext(ctx)
 
 	session, err := s.Get(ctx, refreshToken)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get session")
 		log.Error("failed to get session for deletion", err)
 		return err
 	}
+	span.SetAttributes(attribute.String("user.id", session.UserID))
 
 	pipe := s.redis.TxPipeline()
 
@@ -85,6 +106,8 @@ func (s *Session) Delete(ctx context.Context, refreshToken string) error {
 
 	_, err = pipe.Exec(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to delete session")
 		log.Error("failed to delete session from redis", err, logger.Field{Key: "user_id", Value: session.UserID})
 		return fmt.Errorf("failed to delete session: %w", err)
 	}
@@ -136,20 +159,31 @@ func (s *Session) Exists(ctx context.Context, refreshToken string) (bool, error)
 }
 
 func (s *Session) Get(ctx context.Context, refreshToken string) (domain.Session, error) {
+	ctx, span := otel.Tracer("session-repo").Start(ctx, "Session.Get")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("db.system", "redis"))
+
 	var session domain.Session
 
 	data, err := s.redis.Get(ctx, s.sessionKey(refreshToken)).Result()
 	if err != nil {
+		span.RecordError(err)
 		if errors.Is(err, redis.Nil) {
+			span.SetStatus(codes.Error, "session not found")
 			return session, domain.ErrSessionNotFound
 		}
+		span.SetStatus(codes.Error, "failed to get session")
 		return session, fmt.Errorf("failed to get session: %w", err)
 	}
 
 	if err := json.Unmarshal([]byte(data), &session); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to unmarshal session")
 		return session, fmt.Errorf("failed to unmarshal session: %w", err)
 	}
 
+	span.SetAttributes(attribute.String("user.id", session.UserID))
 	return session, nil
 }
 
@@ -181,6 +215,13 @@ func (s *Session) GetByUserId(ctx context.Context, userID string) ([]domain.Sess
 }
 
 func (s *Session) Replace(ctx context.Context, oldToken, newToken, userID string) error {
+	ctx, span := otel.Tracer("session-repo").Start(ctx, "Session.Replace")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("db.system", "redis"),
+		attribute.String("user.id", userID),
+	)
 	log := s.logger.WithContext(ctx)
 
 	script := redis.NewScript(`
@@ -208,6 +249,8 @@ func (s *Session) Replace(ctx context.Context, oldToken, newToken, userID string
 
 	sessionData, err := json.Marshal(newSession)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to marshal session")
 		log.Error("failed to marshal session", err, logger.Field{Key: "user_id", Value: userID})
 		return fmt.Errorf("failed to marshal session: %w", err)
 	}
@@ -229,9 +272,12 @@ func (s *Session) Replace(ctx context.Context, oldToken, newToken, userID string
 	).Err()
 
 	if err != nil {
+		span.RecordError(err)
 		if err.Error() == "session not found" {
+			span.SetStatus(codes.Error, "session not found")
 			return domain.ErrSessionNotFound
 		}
+		span.SetStatus(codes.Error, "failed to replace session")
 		log.Error("failed to replace session", err, logger.Field{Key: "user_id", Value: userID})
 		return fmt.Errorf("failed to replace session: %w", err)
 	}

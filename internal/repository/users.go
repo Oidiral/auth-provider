@@ -8,6 +8,9 @@ import (
 	"github.com/Oidiral/auth-provider/internal/domain"
 	"github.com/Oidiral/auth-provider/pkg/logger"
 	"github.com/lib/pq"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type UserRepo struct {
@@ -23,6 +26,10 @@ func NewUserRepo(db DBTX, log logger.Logger) *UserRepo {
 }
 
 func (r *UserRepo) Create(ctx context.Context, input domain.User) (string, error) {
+	ctx, span := otel.Tracer("user-repo").Start(ctx, "UserRepo.Create")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("db.operation", "INSERT"))
 	log := r.logger.WithContext(ctx)
 
 	err := r.db.QueryRowContext(
@@ -31,66 +38,106 @@ func (r *UserRepo) Create(ctx context.Context, input domain.User) (string, error
 		input.Email, input.PasswordHash, input.FirstName, input.LastName, input.Username, input.Phone,
 	).Scan(&input.ID)
 	if err != nil {
+		span.RecordError(err)
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) {
+			span.SetAttributes(attribute.String("db.error_code", string(pqErr.Code)))
 			switch pqErr.Code {
 			case "23505":
+				span.SetStatus(codes.Error, "user already exists")
 				return "", domain.ErrUserAlreadyExists
 			case "23502":
+				span.SetStatus(codes.Error, "invalid input")
 				return "", domain.ErrInvalidInput
 			default:
+				span.SetStatus(codes.Error, "database error")
 				log.Error("database error creating user", err, logger.Field{Key: "email", Value: input.Email}, logger.Field{Key: "code", Value: pqErr.Code})
 				return "", fmt.Errorf("%w: %v", domain.ErrInternalServer, pqErr.Code)
 			}
 		}
+		span.SetStatus(codes.Error, "failed to create user")
 		log.Error("failed to create user", err, logger.Field{Key: "email", Value: input.Email})
 		return "", fmt.Errorf("%w: %v", domain.ErrInternalServer, err)
 	}
 
+	span.SetAttributes(attribute.String("user.id", input.ID))
 	return input.ID, nil
 }
 
 func (r *UserRepo) Get(ctx context.Context, id string) (domain.User, error) {
+	ctx, span := otel.Tracer("user-repo").Start(ctx, "UserRepo.Get")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("db.operation", "SELECT"),
+		attribute.String("user.id", id),
+	)
+
 	var user domain.User
 	err := r.db.GetContext(ctx, &user, "SELECT id, username, first_name, last_name, email, phone, password_hash, is_verified, created_at, updated_at, deleted_at FROM users WHERE id = $1", id)
 	if err != nil {
+		span.RecordError(err)
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) {
+			span.SetAttributes(attribute.String("db.error_code", string(pqErr.Code)))
 			switch pqErr.Code {
 			case "23503":
+				span.SetStatus(codes.Error, "user not found")
 				return user, domain.ErrUserNotFound
 			case "23502":
+				span.SetStatus(codes.Error, "invalid input")
 				return user, domain.ErrInvalidInput
 			default:
+				span.SetStatus(codes.Error, "database error")
 				return user, fmt.Errorf("%w: %v", domain.ErrInternalServer, pqErr.Code)
 			}
 		}
+		span.SetStatus(codes.Error, "failed to get user")
 		return user, fmt.Errorf("%w: %v", domain.ErrInternalServer, err)
 	}
 	return user, nil
 }
 
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (domain.User, error) {
+	ctx, span := otel.Tracer("user-repo").Start(ctx, "UserRepo.GetByEmail")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("db.operation", "SELECT"))
+
 	var user domain.User
 	err := r.db.GetContext(ctx, &user, "SELECT id, username, first_name, last_name, email, phone, password_hash, is_verified, created_at, updated_at, deleted_at FROM users WHERE email = $1", email)
 	if err != nil {
+		span.RecordError(err)
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) {
+			span.SetAttributes(attribute.String("db.error_code", string(pqErr.Code)))
 			switch pqErr.Code {
 			case "23503":
+				span.SetStatus(codes.Error, "user not found")
 				return user, domain.ErrUserNotFound
 			case "23502":
+				span.SetStatus(codes.Error, "invalid input")
 				return user, domain.ErrInvalidInput
 			default:
+				span.SetStatus(codes.Error, "database error")
 				return user, fmt.Errorf("%w: %v", domain.ErrInternalServer, pqErr.Code)
 			}
 		}
+		span.SetStatus(codes.Error, "failed to get user")
 		return user, fmt.Errorf("%w: %v", domain.ErrInternalServer, err)
 	}
+	span.SetAttributes(attribute.String("user.id", user.ID))
 	return user, nil
 }
 
 func (r *UserRepo) Update(ctx context.Context, id string, input domain.UpdateUserInput) error {
+	ctx, span := otel.Tracer("user-repo").Start(ctx, "UserRepo.Update")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("db.operation", "UPDATE"),
+		attribute.String("user.id", id),
+	)
 	log := r.logger.WithContext(ctx)
 
 	query := "UPDATE users SET updated_at = NOW()"
@@ -138,28 +185,37 @@ func (r *UserRepo) Update(ctx context.Context, id string, input domain.UpdateUse
 
 	result, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
+		span.RecordError(err)
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) {
+			span.SetAttributes(attribute.String("db.error_code", string(pqErr.Code)))
 			switch pqErr.Code {
 			case "23505":
+				span.SetStatus(codes.Error, "user already exists")
 				return domain.ErrUserAlreadyExists
 			case "23502":
+				span.SetStatus(codes.Error, "invalid input")
 				return domain.ErrInvalidInput
 			default:
+				span.SetStatus(codes.Error, "database error")
 				log.Error("database error updating user", err, logger.Field{Key: "user_id", Value: id}, logger.Field{Key: "code", Value: pqErr.Code})
 				return fmt.Errorf("%w: %v", domain.ErrInternalServer, pqErr.Code)
 			}
 		}
+		span.SetStatus(codes.Error, "failed to update user")
 		log.Error("failed to update user", err, logger.Field{Key: "user_id", Value: id})
 		return fmt.Errorf("%w: %v", domain.ErrInternalServer, err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get rows affected")
 		log.Error("failed to get rows affected", err, logger.Field{Key: "user_id", Value: id})
 		return fmt.Errorf("%w: %v", domain.ErrInternalServer, err)
 	}
 	if rowsAffected == 0 {
+		span.SetStatus(codes.Error, "user not found")
 		return domain.ErrUserNotFound
 	}
 
@@ -167,38 +223,56 @@ func (r *UserRepo) Update(ctx context.Context, id string, input domain.UpdateUse
 }
 
 func (r *UserRepo) Delete(ctx context.Context, id string) error {
+	ctx, span := otel.Tracer("user-repo").Start(ctx, "UserRepo.Delete")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("db.operation", "DELETE"),
+		attribute.String("user.id", id),
+	)
 	log := r.logger.WithContext(ctx)
 
 	if id == "" {
+		span.SetStatus(codes.Error, "invalid user ID")
 		return domain.ErrInvalidUserID
 	}
 
 	result, err := r.db.ExecContext(ctx, "DELETE FROM users WHERE id = $1", id)
 	if err != nil {
+		span.RecordError(err)
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) {
+			span.SetAttributes(attribute.String("db.error_code", string(pqErr.Code)))
 			switch pqErr.Code {
 			case "23503":
+				span.SetStatus(codes.Error, "user has dependencies")
 				return domain.ErrUserHasDependencies
 			case "23502":
+				span.SetStatus(codes.Error, "invalid input")
 				return domain.ErrInvalidInput
 			case "22P02":
+				span.SetStatus(codes.Error, "invalid user ID")
 				return domain.ErrInvalidUserID
 			default:
+				span.SetStatus(codes.Error, "database error")
 				log.Error("database error deleting user", err, logger.Field{Key: "user_id", Value: id}, logger.Field{Key: "code", Value: pqErr.Code})
 				return fmt.Errorf("%w: %v", domain.ErrInternalServer, pqErr.Code)
 			}
 		}
+		span.SetStatus(codes.Error, "failed to delete user")
 		log.Error("failed to delete user", err, logger.Field{Key: "user_id", Value: id})
 		return fmt.Errorf("%w: %v", domain.ErrInternalServer, err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get rows affected")
 		log.Error("failed to get rows affected", err, logger.Field{Key: "user_id", Value: id})
 		return fmt.Errorf("%w: failed to get rows affected", domain.ErrInternalServer)
 	}
 	if rowsAffected == 0 {
+		span.SetStatus(codes.Error, "user not found")
 		return domain.ErrUserNotFound
 	}
 

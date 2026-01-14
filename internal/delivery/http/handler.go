@@ -17,12 +17,14 @@ import (
 )
 
 type Handler struct {
-	services *service.Services
+	services    *service.Services
+	serviceName string
 }
 
-func NewHandler(services *service.Services) *Handler {
+func NewHandler(services *service.Services, serviceName string) *Handler {
 	return &Handler{
-		services: services,
+		services:    services,
+		serviceName: serviceName,
 	}
 }
 
@@ -40,6 +42,7 @@ func (h *Handler) Init(log logger.Logger) chi.Router {
 		middleware.Recoverer,
 		middleware.RequestID,
 		middleware.RealIP,
+		TracingMiddleware(h.serviceName),
 		ZerologMiddleware(log),
 		middleware.Timeout(60*time.Second),
 		middleware.Throttle(100),
